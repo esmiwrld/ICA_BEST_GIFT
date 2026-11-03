@@ -1,0 +1,769 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>✧ for you ✧</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  :root {
+    --fg: #f5eefb;
+    --dim: #9a8aad;
+    --accent: #e0a4ff;
+    --accent2: #7fb8ff;
+  }
+  
+  html, body {
+    height: 100vh;
+    width: 100vw;
+    background: #060409;
+    font-family: "Georgia", "Times New Roman", serif; color: var(--fg);
+    overflow: hidden;
+  }
+
+  /* ===== 3D SCENE (Fixed Background) ===== */
+  #scene {
+    position: fixed; inset: 0;
+    perspective: 900px;
+    perspective-origin: 50% 50%;
+    overflow: hidden;
+    background: #060409;
+    z-index: 0;
+  }
+  .gif-layer {
+    position: absolute; inset: -15%;
+    background-image: url("stars.gif");
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    will-change: transform;
+    transform-style: preserve-3d;
+  }
+  .gif-far {
+    filter: brightness(0.55) saturate(1.1);
+    opacity: 0.85;
+  }
+  .gif-near {
+    filter: blur(6px) brightness(1.05) saturate(1.3);
+    opacity: 0.35;
+    mix-blend-mode: screen;
+  }
+  #scene::after {
+    content: "";
+    position: absolute; inset: 0;
+    pointer-events: none;
+    background: radial-gradient(circle at 50% 45%,
+      transparent 0%, transparent 35%, rgba(6,4,9,0.65) 75%, rgba(6,4,9,0.95) 100%);
+  }
+
+  /* ===== GATE ===== */
+  #gate {
+    position: fixed; inset: 0;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    z-index: 100;
+    transition: opacity 0.9s ease, visibility 0.9s;
+    cursor: pointer;
+    background: transparent;
+  }
+  #gate.gone {
+    opacity: 0; visibility: hidden; pointer-events: none;
+  }
+  .gate-inner {
+    display: flex; flex-direction: column;
+    align-items: center; gap: 26px;
+    padding: 20px;
+  }
+  .gate-title {
+    font-size: clamp(24px, 4vw, 34px);
+    font-weight: 400;
+    letter-spacing: 0.14em;
+    text-transform: lowercase;
+    background: linear-gradient(135deg, #f5eefb 10%, #e0a4ff 50%, #7fb8ff 90%);
+    -webkit-background-clip: text; background-clip: text;
+    color: transparent;
+    text-shadow: 0 0 40px rgba(200,140,255,0.4);
+  }
+  .cover-wrap {
+    position: relative;
+    width: min(280px, 62vw);
+    aspect-ratio: 3 / 4;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 0 0 1px rgba(255,255,255,0.14), 0 30px 80px rgba(180,100,240,0.4), 0 0 140px rgba(120,60,180,0.45);
+    transition: transform 0.5s cubic-bezier(.2,.9,.3,1), box-shadow 0.5s;
+    animation: float 6s ease-in-out infinite;
+  }
+  .cover-wrap:hover {
+    transform: scale(1.04);
+    box-shadow: 0 0 0 1px rgba(224,164,255,0.45), 0 40px 100px rgba(200,120,255,0.55), 0 0 180px rgba(160,90,220,0.6);
+  }
+  @keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50%      { transform: translateY(-8px); }
+  }
+  .cover-wrap img {
+    width: 100%; height: 100%; object-fit: cover; display: block;
+    filter: saturate(1.1) contrast(1.05);
+  }
+  .cover-wrap::after {
+    content: "";
+    position: absolute; inset: 0;
+    background: linear-gradient(120deg, transparent 30%, rgba(255,255,255,0.32) 50%, transparent 70%);
+    transform: translateX(-150%);
+    animation: shimmer 4s ease-in-out infinite;
+    pointer-events: none;
+  }
+  @keyframes shimmer {
+    0%, 60% { transform: translateX(-150%); }
+    100%    { transform: translateX(150%); }
+  }
+  .tap-hint {
+    font-size: 12px; letter-spacing: 6px; text-transform: uppercase;
+    color: var(--dim); animation: pulse 2.4s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 0.4; }
+    50%      { opacity: 1; }
+  }
+
+  /* ===== MAIN CONTENT (Scrollable Snap) ===== */
+  #content {
+    position: relative;
+    z-index: 10;
+    height: 100vh;
+    width: 100vw;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 1s ease 0.2s, visibility 1s;
+  }
+  #content.on { opacity: 1; visibility: visible; }
+
+  .scroll-container {
+    height: 100vh;
+    width: 100vw;
+    transition: transform 1s cubic-bezier(0.16, 1, 0.3, 1);
+    will-change: transform;
+  }
+
+  .page-section {
+    height: 100vh;
+    width: 100vw;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    position: relative;
+    padding: 40px 20px;
+  }
+
+  /* --- SECTION 1: HER ALBUM --- */
+  .album-head {
+    text-align: center;
+    margin-bottom: 26px;
+  }
+  .album-title {
+    font-size: clamp(28px, 5vw, 42px);
+    font-weight: 400; letter-spacing: 0.14em; text-transform: lowercase;
+    background: linear-gradient(135deg, #f5eefb, #e0a4ff);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .album-sub {
+    font-size: 10px; letter-spacing: 5px; text-transform: uppercase;
+    color: var(--dim); margin-top: 6px;
+  }
+
+  .grid {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 14px;
+    width: 100%;
+    max-width: 650px;
+    margin: 0 auto;
+  }
+  .grid .photo {
+    width: 110px;
+    aspect-ratio: 3 / 4;
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid rgba(255,255,255,0.08);
+    background: rgba(255,255,255,0.03);
+    box-shadow: 0 10px 26px rgba(0,0,0,0.45);
+    cursor: pointer;
+    transition: transform 0.4s, border-color 0.3s, box-shadow 0.4s;
+  }
+  .grid .photo:hover {
+    transform: translateY(-5px) scale(1.04);
+    border-color: var(--accent);
+    box-shadow: 0 20px 40px rgba(200,140,255,0.3);
+    z-index: 2;
+  }
+  .grid .photo img {
+    width: 100%; height: 100%; object-fit: cover; display: block;
+    filter: saturate(1.05) contrast(1.02);
+    transition: filter 0.4s;
+  }
+  .grid .photo:hover img {
+    filter: saturate(1.2) contrast(1.08) brightness(1.05);
+  }
+
+  .scroll-hint {
+    position: absolute;
+    bottom: 30px;
+    font-size: 11px;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    color: var(--dim);
+    animation: bounce 2s infinite;
+  }
+  @keyframes bounce {
+    0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+    40% { transform: translateY(-8px); }
+    60% { transform: translateY(-4px); }
+  }
+
+  /* --- SECTION 2: MEMORIES (Auto-slider) --- */
+  .memories-title {
+    text-align: center;
+    margin-bottom: 30px;
+  }
+  
+  .slider-wrapper {
+    width: 100%;
+    overflow: hidden;
+    padding: 10px 0;
+    mask-image: linear-gradient(to right, transparent, black 8%, black 92%, transparent);
+    -webkit-mask-image: linear-gradient(to right, transparent, black 8%, black 92%, transparent);
+  }
+  
+  .slider-track {
+    display: flex;
+    gap: 20px;
+    width: max-content;
+    animation: slide 60s linear infinite;
+    will-change: transform;
+    --set-width: 0px;
+  }
+  .slider-track:hover {
+    animation-play-state: paused;
+  }
+
+  @keyframes slide {
+    0% { transform: translateX(0); }
+    100% { transform: translateX(calc(var(--set-width) * -1)); }
+  }
+
+  .slider-track .photo {
+    width: 200px;
+    aspect-ratio: 3 / 4;
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid rgba(255,255,255,0.1);
+    box-shadow: 0 15px 35px rgba(0,0,0,0.6);
+    flex-shrink: 0;
+    cursor: pointer;
+    transition: transform 0.3s, border-color 0.3s;
+  }
+  .slider-track .photo:hover {
+    transform: scale(1.03);
+    border-color: var(--accent);
+  }
+  .slider-track .photo img {
+    width: 100%; height: 100%; object-fit: cover; display: block;
+    filter: saturate(1.05) contrast(1.02);
+  }
+
+  /* --- SECTION 3: MUSIC TRACK --- */
+  .music-title {
+    text-align: center;
+    margin-bottom: 40px;
+  }
+  
+  .music-container {
+    display: flex; flex-direction: column; align-items: center; gap: 30px;
+  }
+
+  .album-wrapper {
+    position: relative; width: 260px; height: 260px;
+    display: flex; justify-content: center; align-items: center;
+  }
+
+  .vinyl {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    width: 240px; height: 240px; border-radius: 50%;
+    background: repeating-radial-gradient(#111 0%, #222 5%, #111 10%);
+    border: 4px solid #000;
+    z-index: 1; animation: spin 4s linear infinite; animation-play-state: paused;
+    box-shadow: 0 0 40px rgba(200,140,255,0.2);
+  }
+  .vinyl::after {
+    content: ""; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    width: 45px; height: 45px; background: #060409; border-radius: 50%; border: 1px solid #333;
+  }
+  @keyframes spin { 100% { transform: translate(-50%, -50%) rotate(360deg); } }
+
+  .album-cover {
+    width: 220px; height: 220px; object-fit: cover; border-radius: 8px;
+    position: relative; z-index: 2; border: 1px solid rgba(255,255,255,0.15);
+    box-shadow: 0 15px 40px rgba(0,0,0,0.8), 0 0 50px rgba(200,140,255,0.3);
+  }
+
+  .track-info {
+    text-align: center;
+    display: flex; flex-direction: column; align-items: center; gap: 10px;
+  }
+  .track-title {
+    font-size: 26px; letter-spacing: 4px; text-transform: lowercase; color: var(--fg);
+  }
+  
+  .play-btn {
+    background: transparent; border: 1px solid rgba(255,255,255,0.2); color: var(--fg);
+    width: 64px; height: 64px; border-radius: 50%; display: flex; justify-content: center; align-items: center;
+    cursor: pointer; transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    box-shadow: 0 0 15px rgba(224,164,255,0.1);
+    margin-top: 15px;
+  }
+  .play-btn:hover { 
+    background: rgba(224,164,255,0.1); 
+    border-color: var(--accent); 
+    box-shadow: 0 0 30px rgba(224,164,255,0.4);
+    transform: scale(1.05);
+  }
+  .play-btn svg { display: block; fill: currentColor; }
+
+  /* --- SECTION 4: THE LETTER --- */
+  .letter-container {
+    width: 100%;
+    max-width: 600px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(224, 164, 255, 0.15);
+    border-radius: 16px;
+    padding: 40px 30px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.6), 0 0 80px rgba(200,140,255,0.1);
+    max-height: 70vh;
+    overflow-y: auto;
+    backdrop-filter: blur(8px);
+    position: relative;
+  }
+  
+  .letter-container::-webkit-scrollbar {
+    width: 6px;
+  }
+  .letter-container::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .letter-container::-webkit-scrollbar-thumb {
+    background: rgba(224, 164, 255, 0.3);
+    border-radius: 10px;
+  }
+
+  .letter-text {
+    font-size: 15px;
+    line-height: 1.9;
+    color: var(--fg);
+    text-align: justify;
+    white-space: pre-wrap;
+    font-family: "Georgia", "Times New Roman", serif;
+  }
+
+  /* Error state */
+  .photo.error-state {
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(224,164,255,0.05);
+  }
+  .photo.error-state::before {
+    content: attr(data-label);
+    font-size: 11px; color: #9a8aad; letter-spacing: 1px; text-align: center; padding: 10px;
+  }
+
+  /* ===== LIGHTBOX ===== */
+  #lightbox {
+    position: fixed; inset: 0; background: rgba(4,2,8,0.94); backdrop-filter: blur(10px);
+    display: none; align-items: center; justify-content: center;
+    z-index: 200; cursor: zoom-out; opacity: 0; transition: opacity 0.35s;
+  }
+  #lightbox.on { display: flex; opacity: 1; }
+  #lightbox img {
+    max-width: 92vw; max-height: 88vh; border-radius: 6px;
+    box-shadow: 0 0 100px rgba(200,140,255,0.45);
+    animation: pop 0.4s cubic-bezier(.2,.9,.3,1);
+  }
+  @keyframes pop {
+    from { transform: scale(0.92); opacity: 0; }
+    to   { transform: scale(1);    opacity: 1; }
+  }
+
+  @media (max-width: 600px) {
+    .grid .photo { width: 90px; }
+    .slider-track .photo { width: 140px; }
+    .slider-track { gap: 14px; }
+    .album-wrapper { width: 220px; height: 220px; }
+    .vinyl { width: 200px; height: 200px; }
+    .album-cover { width: 180px; height: 180px; }
+    .letter-container { padding: 30px 20px; }
+    .letter-text { font-size: 14px; }
+  }
+</style>
+</head>
+<body>
+
+<audio id="bg-music" src="bgm.mp3" loop></audio>
+
+<!-- 3D parallax scene -->
+<div id="scene">
+  <div class="gif-layer gif-far"  data-depth="0.25"></div>
+  <div class="gif-layer gif-near" data-depth="0.65"></div>
+</div>
+
+<!-- GATE -->
+<div id="gate">
+  <div class="gate-inner">
+    <div class="gate-title">for you</div>
+    <div class="cover-wrap" id="coverWrap">
+      <img src="cover.jpg" alt="cover">
+    </div>
+    <div class="tap-hint">tap to open</div>
+  </div>
+</div>
+
+<!-- MAIN CONTENT -->
+<div id="content">
+  
+  <div class="scroll-container" id="scrollContainer">
+    
+    <!-- SECTION 1: HER ALBUM -->
+    <section class="page-section" id="section-album">
+      <div class="album-head">
+        <div class="album-title">her album</div>
+        <div class="album-sub">✦ memories ✦</div>
+      </div>
+      
+      <div class="grid" id="albumGrid"></div>
+
+      <div class="scroll-hint">scroll down</div>
+    </section>
+
+    <!-- SECTION 2: MEMORIES SLIDER -->
+    <section class="page-section" id="section-memories">
+      <div class="memories-title">
+        <div class="album-title">memories</div>
+        <div class="album-sub">✦ our time ✦</div>
+      </div>
+
+      <div class="slider-wrapper">
+        <div class="slider-track" id="memoriesTrack"></div>
+      </div>
+    </section>
+
+    <!-- SECTION 3: MUSIC TRACK -->
+    <section class="page-section" id="section-music">
+      <div class="music-title">
+        <div class="album-title">dedicated to you</div>
+        <div class="album-sub">✦ for you ✦</div>
+      </div>
+
+      <div class="music-container">
+        <div class="album-wrapper">
+          <div class="vinyl" id="vinyl"></div>
+          <img src="album.png" alt="Album Cover" class="album-cover">
+        </div>
+
+        <div class="track-info">
+          <div class="track-title">I LOVE YOU BABY ICA</div>
+          
+          <button class="play-btn" id="playBtn">
+            <svg id="icon-play" viewBox="0 0 24 24" style="width:24px;height:24px;margin-left:4px;"><path d="M8 5v14l11-7z"/></svg>
+            <svg id="icon-pause" viewBox="0 0 24 24" style="display:none;width:24px;height:24px;"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 4: THE LETTER -->
+    <section class="page-section" id="section-letter">
+      <div class="music-title">
+        <div class="album-title">for my bebs</div>
+        <div class="album-sub">✦ a letter ✦</div>
+      </div>
+
+      <div class="letter-container">
+        <div class="letter-text">icaaa baby i just wanna tell you how much i appreciate you and how grateful i am to have you in my life. sometimes i feel like i dont say it enough but i really do appreciate everything you do for me kahit yung mga simpleng bagay lang. i appreciate every mcdonalds and every food na binibigay mo sakin baby. you might think na pagkain lang naman yun but for me its more than that kasi i know na you thought of me and you wanted to make me happy. hindi ko man lagi nasasabi pero those little things mean a lot to me and i hope you know that i never take them for granted.
+
+i also appreciate all the games we play together and all the random moments na bigla nalang tayong tatawa over something silly. i love those moments with you kasi kahit wala naman tayong masyadong ginagawa we still find ways to enjoy each other's company. i love laughing with you and talking to you about random things and just spending time with you. honestly baby those are the moments that make me happy and i hope we never run out of things to laugh about and memories to make together. i dont need everything to be perfect as long as i get to experience those little moments with you.
+
+and ica i hope you know that i love you for who you are and not just for what you do for me. i love having you around and i love being able to call you my baby. im thankful for your time your effort your care and even the little things you do without realizing how much they mean to me. i want you to feel appreciated and loved the same way you make me feel. i hope i can make you as happy as you make me and give you the same comfort and love that you give me. thank you for everything baby and thank you for being part of my everyday life. i still want more games more food more random laughs and more memories with you. i love you so much icaaa and im really really happy that i have you. mwaaaaa bebs🥺❤️</div>
+      </div>
+    </section>
+
+  </div>
+
+</div>
+
+<!-- LIGHTBOX -->
+<div id="lightbox"><img id="lightboxImg" src="" alt=""></div>
+
+<script>
+(() => {
+  "use strict";
+
+  const ALBUM_PHOTOS = [
+    "1.jpg", "2.jpg", "3.jpg", "4.jpg", "5.jpg", "6.jpg", "7.jpg"
+  ];
+
+  const MEMORIES_PHOTOS = [
+    "M1.jpg", "M2.jpg", "M3.jpg", "M4.jpg", "M5.jpg"
+  ];
+
+  const gate       = document.getElementById("gate");
+  const coverWrap  = document.getElementById("coverWrap");
+  const albumGrid  = document.getElementById("albumGrid");
+  const memTrack   = document.getElementById("memoriesTrack");
+  const lb         = document.getElementById("lightbox");
+  const lbImg      = document.getElementById("lightboxImg");
+  const contentEl  = document.getElementById("content");
+  const scrollContainer = document.getElementById("scrollContainer");
+  const sections   = document.querySelectorAll(".page-section");
+
+  const layers  = Array.from(document.querySelectorAll(".gif-layer"));
+  const target  = { x: 0, y: 0 };
+  const current = { x: 0, y: 0 };
+
+  function onMove(e) {
+    target.x = (e.clientX / innerWidth  - 0.5) * 2;
+    target.y = (e.clientY / innerHeight - 0.5) * 2;
+  }
+  window.addEventListener("mousemove", onMove);
+  window.addEventListener("touchmove", (e) => {
+    const t = e.touches[0]; if (!t) return;
+    target.x = (t.clientX / innerWidth  - 0.5) * 2;
+    target.y = (t.clientY / innerHeight - 0.5) * 2;
+  }, { passive: true });
+
+  let last = performance.now();
+  function tick(now) {
+    const dt = Math.min(50, now - last) / 16.67;
+    last = now;
+    current.x += (target.x - current.x) * 0.06 * dt;
+    current.y += (target.y - current.y) * 0.06 * dt;
+
+    for (const layer of layers) {
+      const d = parseFloat(layer.dataset.depth) || 0.3;
+      const tx = -current.x * d * 46;
+      const ty = -current.y * d * 46;
+      const rz = current.x * d * 2.5;
+      layer.style.transform = `translate3d(${tx}px, ${ty}px, 0) scale(1.06) rotateZ(${rz}deg)`;
+    }
+    requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+
+  function buildContent() {
+    ALBUM_PHOTOS.forEach((filename) => {
+      const wrap = document.createElement("div");
+      wrap.className = "photo";
+      wrap.dataset.label = filename;
+
+      const img = document.createElement("img");
+      img.src = filename;
+      img.alt = "";
+      img.draggable = false;
+      
+      img.onerror = () => {
+        wrap.classList.add("error-state");
+        img.remove(); 
+      };
+
+      wrap.appendChild(img);
+      albumGrid.appendChild(wrap);
+    });
+
+    const sliderPhotos = [];
+    for (let i = 0; i < 3; i++) {
+      sliderPhotos.push(...MEMORIES_PHOTOS);
+    }
+    
+    sliderPhotos.forEach((filename) => {
+      const wrap = document.createElement("div");
+      wrap.className = "photo";
+      wrap.dataset.label = filename;
+
+      const img = document.createElement("img");
+      img.src = filename;
+      img.alt = "";
+      img.draggable = false;
+      
+      img.onerror = () => {
+        wrap.classList.add("error-state");
+        img.remove(); 
+      };
+
+      wrap.appendChild(img);
+      memTrack.appendChild(wrap);
+    });
+
+    setTimeout(() => {
+      let setWidth = 0;
+      const computedStyle = window.getComputedStyle(memTrack);
+      const gap = parseFloat(computedStyle.gap) || 20;
+      const photos = memTrack.querySelectorAll('.photo');
+      
+      for (let i = 0; i < MEMORIES_PHOTOS.length; i++) {
+        if (photos[i]) {
+          setWidth += photos[i].offsetWidth + gap;
+        }
+      }
+      memTrack.style.setProperty('--set-width', setWidth + 'px');
+    }, 100);
+  }
+
+  const bgMusic = document.getElementById("bg-music");
+  const playBtn = document.getElementById("playBtn");
+  const vinyl = document.getElementById("vinyl");
+  const iconPlay = document.getElementById("icon-play");
+  const iconPause = document.getElementById("icon-pause");
+  
+  bgMusic.volume = 0.5;
+
+  function updateAudioUI() {
+    if (bgMusic.paused) {
+      vinyl.style.animationPlayState = 'paused';
+      iconPlay.style.display = 'block';
+      iconPause.style.display = 'none';
+    } else {
+      vinyl.style.animationPlayState = 'running';
+      iconPlay.style.display = 'none';
+      iconPause.style.display = 'block';
+    }
+  }
+
+  playBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    if (bgMusic.paused) {
+      bgMusic.play();
+    } else {
+      bgMusic.pause();
+    }
+    updateAudioUI();
+  });
+
+  bgMusic.addEventListener("play", updateAudioUI);
+  bgMusic.addEventListener("pause", updateAudioUI);
+
+  let entered = false;
+  
+  function startAudio() {
+    bgMusic.play().catch(() => {
+        document.addEventListener('click', function once() {
+            bgMusic.play().catch(() => {});
+            document.removeEventListener('click', once);
+        }, { once: true });
+    });
+  }
+
+  function enter() {
+    if (entered) return;
+    entered = true;
+    startAudio();
+    buildContent();
+    gate.classList.add("gone");
+    contentEl.classList.add("on");
+  }
+  
+  coverWrap.addEventListener("click", enter);
+  gate.addEventListener("click", enter);
+
+  let currentIndex = 0;
+  let isAnimating = false;
+
+  function goToSection(index) {
+    if (index < 0 || index >= sections.length || isAnimating) return;
+    
+    isAnimating = true;
+    currentIndex = index;
+
+    scrollContainer.style.transform = `translateY(-${index * 100}vh)`;
+
+    setTimeout(() => { isAnimating = false; }, 1000);
+  }
+
+  window.addEventListener('wheel', (e) => {
+    const letterContainer = e.target.closest('.letter-container');
+    if (letterContainer) {
+        const isAtTop = letterContainer.scrollTop === 0;
+        const isAtBottom = Math.ceil(letterContainer.scrollTop + letterContainer.clientHeight) >= letterContainer.scrollHeight;
+        
+        if ((e.deltaY < 0 && isAtTop) || (e.deltaY > 0 && isAtBottom)) {
+            // Let it fall through to section change
+        } else {
+            return;
+        }
+    }
+
+    if (!entered || lb.classList.contains("on")) return;
+    
+    e.preventDefault();
+    if (isAnimating) return;
+
+    if (e.deltaY > 30) {
+      goToSection(currentIndex + 1);
+    } else if (e.deltaY < -30) {
+      goToSection(currentIndex - 1);
+    }
+  }, { passive: false });
+
+  let touchStartY = 0;
+  window.addEventListener('touchstart', (e) => { 
+    if (!entered || lb.classList.contains("on")) return;
+    touchStartY = e.touches[0].clientY; 
+  }, { passive: false });
+
+  window.addEventListener('touchend', (e) => {
+    if (!entered || isAnimating || lb.classList.contains("on")) return;
+    
+    const letterContainer = e.target.closest('.letter-container');
+    if (letterContainer) {
+        const isAtTop = letterContainer.scrollTop === 0;
+        const isAtBottom = Math.ceil(letterContainer.scrollTop + letterContainer.clientHeight) >= letterContainer.scrollHeight;
+        const touchEndY = e.changedTouches[0].clientY;
+        const distance = touchStartY - touchEndY;
+        
+        if ((distance < -50 && isAtTop) || (distance > 50 && isAtBottom)) {
+           // fall through to section change
+        } else {
+           return;
+        }
+    }
+
+    const touchEndY = e.changedTouches[0].clientY;
+    const distance = touchStartY - touchEndY;
+    
+    if (distance > 50) goToSection(currentIndex + 1);
+    else if (distance < -50) goToSection(currentIndex - 1);
+  }, { passive: false });
+
+  document.getElementById("section-album").addEventListener("click", handleLBClick);
+  document.getElementById("section-memories").addEventListener("click", handleLBClick);
+
+  function handleLBClick(e) {
+    const photo = e.target.closest(".photo");
+    if (!photo || photo.classList.contains("error-state")) return;
+    const img = photo.querySelector("img");
+    if (!img || !img.complete || !img.naturalWidth) return;
+    lbImg.src = img.src;
+    lb.classList.add("on");
+  }
+  
+  lb.addEventListener("click", () => {
+    lb.classList.remove("on");
+    setTimeout(() => { lbImg.src = ""; }, 350);
+  });
+  
+  window.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && lb.classList.contains("on")) {
+      lb.classList.remove("on");
+      setTimeout(() => { lbImg.src = ""; }, 350);
+    }
+  });
+})();
+</script>
+</body>
+</html>
